@@ -1,13 +1,64 @@
 package com.firemaples.googlewebtranslatortest;
 
-import android.support.v7.app.AppCompatActivity;
+import android.content.DialogInterface;
 import android.os.Bundle;
+import android.support.v7.app.AlertDialog;
+import android.support.v7.app.AppCompatActivity;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.ViewGroup;
+import android.widget.EditText;
+
+import com.firemaples.googlewebtranslator.GoogleWebTranslator;
 
 public class MainActivity extends AppCompatActivity {
+
+    private GoogleWebTranslator translator;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        translator = GoogleWebTranslator.init(this);
+
+        setViews();
+    }
+
+    private void setViews() {
+        ViewGroup rootView = findViewById(R.id.view_root);
+        rootView.addView(translator.getNonParentWebView(),
+                new ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT));
+
+        translator.setTargetLanguage("zh-TW");
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.action_translate) {
+            AlertDialog.Builder ab = new AlertDialog.Builder(this);
+            final EditText et = new EditText(this);
+            ab.setView(et);
+            ab.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    String text = et.getText().toString();
+                    translator.translate(text);
+                }
+            });
+            ab.setNegativeButton(android.R.string.cancel, null);
+            ab.show();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 }
