@@ -60,6 +60,7 @@ public class GoogleWebTranslator {
     private WebView webView;
     private boolean initialized = false;
     private String textToTranslate = null;
+    private long prepareStartTime = 0, translationStartTime = 0;
 
     private List<OnTranslationCallback> callbackList = new ArrayList<>();
 
@@ -148,6 +149,8 @@ public class GoogleWebTranslator {
 
         logger.info("setTargetLanguage: " + url);
 
+        prepareStartTime = System.currentTimeMillis();
+
         webView.loadUrl(url);
     }
 
@@ -156,6 +159,9 @@ public class GoogleWebTranslator {
 //        text = text.replaceAll("\\R", "\\n");
 //        String textToSend = String.format(JS_FORCE_POST_TRANSLATE, String.valueOf(translationCounter = !translationCounter));
 //        _doJavascript(textToSend);
+
+        translationStartTime = System.currentTimeMillis();
+
         _doJavascript(JS_TRANSLATE.replace(FORMAT_TEXT, text));
     }
 
@@ -180,7 +186,8 @@ public class GoogleWebTranslator {
 
             _doJavascript(JS_INIT);
             initialized = true;
-            logger.info("Page initialized");
+            long preparedSpentTime = System.currentTimeMillis() - prepareStartTime;
+            logger.info("Page initialized, spent: " + preparedSpentTime + " ms");
         }
 
         // shouldInterceptRequest:
@@ -214,6 +221,10 @@ public class GoogleWebTranslator {
 ////            }
 //        }
 
+        private long getTranslationSpentTime() {
+            return System.currentTimeMillis() - translationStartTime;
+        }
+
         private WebResourceResponse _interceptRequest(String url, boolean methodGet, Map<String, String> requestHeaders) {
             if (!url.startsWith(URL_LOAD_TRANSLATION_RESULT)) {
                 return null;
@@ -224,7 +235,7 @@ public class GoogleWebTranslator {
                     + ", requestHeaders!=null: " + String.valueOf(requestHeaders != null));
 
             if (!methodGet) {
-                logger.warn("POST not working now");
+                logger.warn("POST not working now, spent: " + getTranslationSpentTime() + " ms");
 
                 postFailed(new IllegalArgumentException("Http POST is not supported now"));
 
@@ -298,7 +309,7 @@ public class GoogleWebTranslator {
             String translatedText = responseText[0];
 
             if (success[0]) {
-                logger.info("On result success: " + responseText[0]);
+                logger.info("On result success, spent: " + getTranslationSpentTime() + " ms, result: " + responseText[0]);
 
                 postResult(textToTranslate, translatedText);
 
@@ -364,12 +375,12 @@ public class GoogleWebTranslator {
     private class MyJavaScriptInterface {
         @JavascriptInterface
         public void onTranslationSuccess(String text) {
-            logger.info("onTranslationSuccess: " + text);
+            logger.debug("onTranslationSuccess: " + text);
         }
 
         @JavascriptInterface
         public void onTranslationFailed() {
-            logger.info("onTranslationFailed");
+            logger.debug("onTranslationFailed");
         }
     }
 
