@@ -4,6 +4,7 @@ import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.ViewGroup;
@@ -12,8 +13,21 @@ import android.widget.EditText;
 import com.firemaples.googlewebtranslator.GoogleWebTranslator;
 
 public class MainActivity extends AppCompatActivity {
+    private static final String TAG = MainActivity.class.getSimpleName();
 
     private GoogleWebTranslator translator;
+
+    private GoogleWebTranslator.OnTranslationCallback onTranslationCallback = new GoogleWebTranslator.OnTranslationCallback() {
+        @Override
+        public void onTranslationSuccess(String originalText, String translatedText) {
+            Log.i(TAG, "Translation success: " + translatedText);
+        }
+
+        @Override
+        public void onTranslationFailed(Throwable throwable) {
+            Log.e(TAG, "Translation failed: " + throwable);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -21,6 +35,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         translator = GoogleWebTranslator.init(this);
+
+        translator.addOnTranslationCallback(onTranslationCallback);
 
         setViews();
     }
@@ -33,6 +49,12 @@ public class MainActivity extends AppCompatActivity {
                         ViewGroup.LayoutParams.MATCH_PARENT));
 
         translator.setTargetLanguage("zh-TW");
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        translator.removeOnTranslationCallback(onTranslationCallback);
     }
 
     @Override

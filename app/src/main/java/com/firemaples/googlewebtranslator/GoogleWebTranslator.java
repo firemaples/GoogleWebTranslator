@@ -1,8 +1,6 @@
 package com.firemaples.googlewebtranslator;
 
-import android.annotation.TargetApi;
 import android.content.Context;
-import android.os.Build;
 import android.support.annotation.Nullable;
 import android.view.MotionEvent;
 import android.view.View;
@@ -14,7 +12,6 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
-import com.loopj.android.http.RequestParams;
 import com.loopj.android.http.SyncHttpClient;
 import com.loopj.android.http.TextHttpResponseHandler;
 
@@ -24,18 +21,13 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayInputStream;
 import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
-import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 import cz.msebera.android.httpclient.Header;
-import cz.msebera.android.httpclient.NameValuePair;
-import cz.msebera.android.httpclient.client.utils.URIBuilder;
-import cz.msebera.android.httpclient.message.BasicHeader;
 
 public class GoogleWebTranslator {
     private final static Logger logger = LoggerFactory.getLogger(GoogleWebTranslator.class);
@@ -67,9 +59,9 @@ public class GoogleWebTranslator {
 
     private WebView webView;
     private boolean initialized = false;
-
-    private boolean translationCounter = true;
     private String textToTranslate = null;
+
+    private List<OnTranslationCallback> callbackList = new ArrayList<>();
 
     public static synchronized GoogleWebTranslator init(Context context) {
         if (_instance == null) {
@@ -143,6 +135,14 @@ public class GoogleWebTranslator {
         settings.setSupportMultipleWindows(false);
     }
 
+    public void addOnTranslationCallback(OnTranslationCallback onTranslationCallback) {
+        this.callbackList.add(onTranslationCallback);
+    }
+
+    public void removeOnTranslationCallback(OnTranslationCallback onTranslationCallback) {
+        this.callbackList.remove(onTranslationCallback);
+    }
+
     public void setTargetLanguage(String targetLanguage) {
         String url = URL_GOOGLE_TRANSLATE.replace(FORMAT_TARGET_LANG, targetLanguage);
 
@@ -152,11 +152,11 @@ public class GoogleWebTranslator {
     }
 
     public void translate(String text) {
-//        text = text.replaceAll("\\R", "\\n");
         textToTranslate = text;
-        String textToSend = String.format(JS_FORCE_POST_TRANSLATE, String.valueOf(translationCounter = !translationCounter));
-//        _doJavascript(JS_TRANSLATE.replace(FORMAT_TEXT, text));
-        _doJavascript(textToSend);
+//        text = text.replaceAll("\\R", "\\n");
+//        String textToSend = String.format(JS_FORCE_POST_TRANSLATE, String.valueOf(translationCounter = !translationCounter));
+//        _doJavascript(textToSend);
+        _doJavascript(JS_TRANSLATE.replace(FORMAT_TEXT, text));
     }
 
     private void _doJavascript(String javascript) {
@@ -170,6 +170,10 @@ public class GoogleWebTranslator {
     private class MyWebViewClient extends WebViewClient {
         private SyncHttpClient httpClient = new SyncHttpClient();
 
+        private MyWebViewClient() {
+            httpClient.setCookieStore(CookieStoreUtil.getCookieStore());
+        }
+
         @Override
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
@@ -182,7 +186,6 @@ public class GoogleWebTranslator {
         // shouldInterceptRequest:
         // https://gist.github.com/kibotu/32313b957cd01258cf67
 
-        @TargetApi(Build.VERSION_CODES.LOLLIPOP)
         @Nullable
         @Override
         public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
@@ -198,18 +201,18 @@ public class GoogleWebTranslator {
             }
         }
 
-        @Nullable
-        @Override
-        public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
-
-//            WebResourceResponse response = _interceptRequest(url, false, null);
+//        @Nullable
+//        @Override
+//        public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
 //
-//            if (response != null) {
-//                return response;
-//            } else {
-            return super.shouldInterceptRequest(view, url);
-//            }
-        }
+////            WebResourceResponse response = _interceptRequest(url, true, null);
+////
+////            if (response != null) {
+////                return response;
+////            } else {
+//            return super.shouldInterceptRequest(view, url);
+////            }
+//        }
 
         private WebResourceResponse _interceptRequest(String url, boolean methodGet, Map<String, String> requestHeaders) {
             if (!url.startsWith(URL_LOAD_TRANSLATION_RESULT)) {
@@ -220,20 +223,12 @@ public class GoogleWebTranslator {
                     + ", methodGet: " + methodGet
                     + ", requestHeaders!=null: " + String.valueOf(requestHeaders != null));
 
-            if (requestHeaders != null) {
-                logger.debug("====== Cookie Start ======");
+            if (!methodGet) {
+                logger.warn("POST not working now");
 
-                Set<String> keySet = requestHeaders.keySet();
-                for (String key : keySet) {
-                    String value = requestHeaders.get(key);
+                postFailed(new IllegalArgumentException("Http POST is not supported now"));
 
-                    logger.debug(key + "=" + value);
-                }
-
-                logger.debug("====== Cookie End ======");
-
-                //Overwrite JSON response:
-                //https://stackoverflow.com/questions/33370123/how-to-get-webviewclient-shouldinterceptrequest-invoked-asynchronously
+                return null;
             }
 
             final boolean[] success = {false};
@@ -241,33 +236,22 @@ public class GoogleWebTranslator {
             final String[] responseText = new String[1];
             final Throwable[] httpError = new Throwable[1];
 
-            if (methodGet) {
-                try {
-                    url = removeQueryParameter(url, POST_FORM_Q);
-                } catch (URISyntaxException e) {
-                    e.printStackTrace();
-                }
-            }
-
-            //Convert cookie
-            //https://stackoverflow.com/questions/26798500/android-sync-cookies-webview-and-httpclient
-            //TODO Convert cookie
+//            if (methodGet) {
+//                try {
+//                    url = removeQueryParameter(url, POST_FORM_Q);
+//                } catch (URISyntaxException e) {
+//                    e.printStackTrace();
+//                }
+//            }
 
             //Convert headers
-            Header[] headersToSend = null;
-            if (requestHeaders != null) {
-                headersToSend = new Header[requestHeaders.size()];
-                Set<String> keySet = requestHeaders.keySet();
-                int i = 0;
-                for (String key : keySet) {
-                    headersToSend[i] = new BasicHeader(key, requestHeaders.get(key));
-                }
-            }
+            Header[] headersToSend = HttpUtil.getHeaders(requestHeaders);
 
-            Map<String, String> formData = new HashMap<>();
-            formData.put(POST_FORM_Q, textToTranslate);
-            httpClient.post(getContext(), url, headersToSend, new RequestParams(formData), null, new TextHttpResponseHandler(UTF_8) {
+            //Convert cookie
+            CookieStoreUtil.syncFromWebView(url);
 
+//            if (methodGet) {
+            httpClient.get(getContext(), url, headersToSend, null, new TextHttpResponseHandler(UTF_8) {
                 @Override
                 public void onFailure(int statusCode, Header[] headers, String responseString, Throwable throwable) {
                     success[0] = false;
@@ -281,9 +265,43 @@ public class GoogleWebTranslator {
                     responseText[0] = responseString;
                 }
             });
+//            } else {
+//                //TODO not working now
+//
+//                Map<String, String> formData = new HashMap<>();
+//                formData.put(POST_FORM_Q, textToTranslate);
+////            formData.putAll(requestHeaders);
+//
+//                StringEntity stringEntity = null;
+//                try {
+//                    stringEntity = new StringEntity(POST_FORM_Q + "=" + textToTranslate);
+//                } catch (UnsupportedEncodingException e) {
+//                    e.printStackTrace();
+//                }
+//
+//                httpClient.post(getContext(), url, headersToSend, stringEntity, "application/json; charset=UTF-8", new TextHttpResponseHandler(UTF_8) {
+//                    @Override
+//                    public void onFailure(int statusCode, Header[] headers, String responseString, Throwable throwable) {
+//                        success[0] = false;
+//                        httpError[0] = throwable;
+//                    }
+//
+//                    @Override
+//                    public void onSuccess(int statusCode, Header[] headers, String responseString) {
+//                        success[0] = true;
+//                        responseHeaders[0] = headers;
+//                        responseText[0] = responseString;
+//                    }
+//                });
+//            }
+
+            String translatedText = responseText[0];
 
             if (success[0]) {
                 logger.info("On result success: " + responseText[0]);
+
+                postResult(textToTranslate, translatedText);
+
                 try {
                     return new WebResourceResponse(
                             null,
@@ -305,6 +323,9 @@ public class GoogleWebTranslator {
                 }
             } else {
                 logger.warn("Result failed: " + httpError[0].getMessage());
+
+                postFailed(httpError[0]);
+
                 return null;
             }
         }
@@ -316,17 +337,26 @@ public class GoogleWebTranslator {
             logger.debug("onLoadResource: " + url);
         }
 
-        public String removeQueryParameter(String url, String parameterName) throws URISyntaxException {
-            URIBuilder uriBuilder = new URIBuilder(url);
-            List<NameValuePair> queryParameters = uriBuilder.getQueryParams();
-            for (Iterator<NameValuePair> queryParameterItr = queryParameters.iterator(); queryParameterItr.hasNext(); ) {
-                NameValuePair queryParameter = queryParameterItr.next();
-                if (queryParameter.getName().equals(parameterName)) {
-                    queryParameterItr.remove();
+        private void postResult(final String originalText, final String translatedText) {
+            webView.post(new Runnable() {
+                @Override
+                public void run() {
+                    for (OnTranslationCallback onTranslationCallback : callbackList) {
+                        onTranslationCallback.onTranslationSuccess(originalText, translatedText);
+                    }
                 }
-            }
-            uriBuilder.setParameters(queryParameters);
-            return uriBuilder.build().toString();
+            });
+        }
+
+        private void postFailed(final Throwable throwable) {
+            webView.post(new Runnable() {
+                @Override
+                public void run() {
+                    for (OnTranslationCallback onTranslationCallback : callbackList) {
+                        onTranslationCallback.onTranslationFailed(throwable);
+                    }
+                }
+            });
         }
     }
 
@@ -341,5 +371,11 @@ public class GoogleWebTranslator {
         public void onTranslationFailed() {
             logger.info("onTranslationFailed");
         }
+    }
+
+    public interface OnTranslationCallback {
+        void onTranslationSuccess(String originalText, String translatedText);
+
+        void onTranslationFailed(Throwable throwable);
     }
 }
