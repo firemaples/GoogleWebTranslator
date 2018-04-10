@@ -11,6 +11,7 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 
 import com.firemaples.googlewebtranslator.GoogleWebTranslator;
+import com.firemaples.googlewebtranslator.TranslatedResult;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
@@ -18,9 +19,10 @@ public class MainActivity extends AppCompatActivity {
     private GoogleWebTranslator translator;
 
     private GoogleWebTranslator.OnTranslationCallback onTranslationCallback = new GoogleWebTranslator.OnTranslationCallback() {
+
         @Override
-        public void onTranslationSuccess(String originalText, String translatedText) {
-            Log.i(TAG, "Translation success: " + translatedText);
+        public void onTranslationSuccess(TranslatedResult result) {
+            Log.i(TAG, "Translation success: " + result.text);
         }
 
         @Override

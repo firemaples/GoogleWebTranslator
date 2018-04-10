@@ -306,18 +306,20 @@ public class GoogleWebTranslator {
 //                });
 //            }
 
-            String translatedText = responseText[0];
+            String raw = responseText[0];
+
+            TranslatedResult result = ResultParser.parse(responseText[0]);
 
             if (success[0]) {
                 logger.info("On result success, spent: " + getTranslationSpentTime() + " ms, result: " + responseText[0]);
 
-                postResult(textToTranslate, translatedText);
+                postResult(result);
 
                 try {
                     return new WebResourceResponse(
                             null,
                             UTF_8,
-                            new ByteArrayInputStream(responseText[0].getBytes(UTF_8))
+                            new ByteArrayInputStream(raw.getBytes(UTF_8))
                     ) {
                         @Override
                         public Map<String, String> getResponseHeaders() {
@@ -348,12 +350,12 @@ public class GoogleWebTranslator {
             logger.debug("onLoadResource: " + url);
         }
 
-        private void postResult(final String originalText, final String translatedText) {
+        private void postResult(final TranslatedResult result) {
             webView.post(new Runnable() {
                 @Override
                 public void run() {
                     for (OnTranslationCallback onTranslationCallback : callbackList) {
-                        onTranslationCallback.onTranslationSuccess(originalText, translatedText);
+                        onTranslationCallback.onTranslationSuccess(result);
                     }
                 }
             });
@@ -385,7 +387,7 @@ public class GoogleWebTranslator {
     }
 
     public interface OnTranslationCallback {
-        void onTranslationSuccess(String originalText, String translatedText);
+        void onTranslationSuccess(TranslatedResult result);
 
         void onTranslationFailed(Throwable throwable);
     }
