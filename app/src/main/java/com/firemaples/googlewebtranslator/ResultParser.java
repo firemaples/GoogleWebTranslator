@@ -28,7 +28,7 @@ public class ResultParser {
                 }
                 JSONArray arr = mainArray.getJSONArray(i);
                 for (int j = 0; j < arr.length(); j++) {
-                    if (!(arr.get(i) instanceof JSONArray)) {
+                    if (!(arr.get(j) instanceof JSONArray)) {
                         break;
                     }
                     JSONArray obj = arr.getJSONArray(j);

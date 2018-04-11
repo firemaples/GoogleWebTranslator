@@ -21,12 +21,22 @@ public class MainActivity extends AppCompatActivity {
     private GoogleWebTranslator.OnTranslationCallback onTranslationCallback = new GoogleWebTranslator.OnTranslationCallback() {
 
         @Override
-        public void onTranslationSuccess(TranslatedResult result) {
+        public void onInitialized(GoogleWebTranslator translator) {
+            Log.i(TAG, "Translator initialized");
+        }
+
+        @Override
+        public void onInitializationFailed(GoogleWebTranslator translator) {
+            Log.e(TAG, "Translator initialization failed");
+        }
+
+        @Override
+        public void onTranslationSuccess(GoogleWebTranslator translator, TranslatedResult result) {
             Log.i(TAG, "Translation success: " + result.text);
         }
 
         @Override
-        public void onTranslationFailed(Throwable throwable) {
+        public void onTranslationFailed(GoogleWebTranslator translator, Throwable throwable) {
             Log.e(TAG, "Translation failed: " + throwable);
         }
     };

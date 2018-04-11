@@ -1,11 +1,16 @@
 package com.firemaples.googlewebtranslator;
 
+import android.annotation.TargetApi;
 import android.content.Context;
+import android.net.http.SslError;
+import android.os.Build;
 import android.support.annotation.Nullable;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
+import android.webkit.SslErrorHandler;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -39,6 +44,7 @@ public class GoogleWebTranslator {
     private final static String FORMAT_TARGET_LANG = "{TL}";
 
     private static String URL_GOOGLE_TRANSLATE = "https://translate.google.com/m/translate?sl=auto&tl={TL}&ie=UTF-8";
+    //    private static String URL_GOOGLE_TRANSLATE = "https://www.buddydo.com/t3/NjY4NjYy81e5null";
     private static String URL_LOAD_TRANSLATION_RESULT = "https://translate.google.com/translate_a/single?";
 
     private static String JS_FORMAT = "javascript:%s;void 0";
@@ -58,6 +64,8 @@ public class GoogleWebTranslator {
     private WeakReference<Context> weakContext;
 
     private WebView webView;
+    private String currentTranslatorUrl;
+    private boolean receivedErrorBeforeInitialized = false;
     private boolean initialized = false;
     private String textToTranslate = null;
     private long prepareStartTime = 0, translationStartTime = 0;
@@ -149,20 +157,32 @@ public class GoogleWebTranslator {
 
         logger.info("setTargetLanguage: " + url);
 
-        prepareStartTime = System.currentTimeMillis();
+        currentTranslatorUrl = url;
 
-        webView.loadUrl(url);
+        _loadTranslatorUrl();
+    }
+
+    private void _loadTranslatorUrl() {
+        prepareStartTime = System.currentTimeMillis();
+        receivedErrorBeforeInitialized = false;
+        initialized = false;
+        webView.loadUrl(currentTranslatorUrl);
     }
 
     public void translate(String text) {
         textToTranslate = text;
+
+        if (!initialized) {
+            _loadTranslatorUrl();
+        } else {
 //        text = text.replaceAll("\\R", "\\n");
 //        String textToSend = String.format(JS_FORCE_POST_TRANSLATE, String.valueOf(translationCounter = !translationCounter));
 //        _doJavascript(textToSend);
 
-        translationStartTime = System.currentTimeMillis();
+            translationStartTime = System.currentTimeMillis();
 
-        _doJavascript(JS_TRANSLATE.replace(FORMAT_TEXT, text));
+            _doJavascript(JS_TRANSLATE.replace(FORMAT_TEXT, text));
+        }
     }
 
     private void _doJavascript(String javascript) {
@@ -171,6 +191,54 @@ public class GoogleWebTranslator {
         logger.info("_doJavascript: " + url);
 
         webView.loadUrl(url);
+    }
+
+    private void _postMainThread(Runnable runnable) {
+        webView.post(runnable);
+    }
+
+    private void postInitialized() {
+        _postMainThread(new Runnable() {
+            @Override
+            public void run() {
+                for (OnTranslationCallback callback : callbackList) {
+                    callback.onInitialized(GoogleWebTranslator.this);
+                }
+            }
+        });
+    }
+
+    private void postInitializationFailed() {
+        _postMainThread(new Runnable() {
+            @Override
+            public void run() {
+                for (OnTranslationCallback callback : callbackList) {
+                    callback.onInitializationFailed(GoogleWebTranslator.this);
+                }
+            }
+        });
+    }
+
+    private void postTranslationFinish(final TranslatedResult result) {
+        _postMainThread(new Runnable() {
+            @Override
+            public void run() {
+                for (OnTranslationCallback callback : callbackList) {
+                    callback.onTranslationSuccess(GoogleWebTranslator.this, result);
+                }
+            }
+        });
+    }
+
+    private void postTranslationFailed(final Throwable throwable) {
+        _postMainThread(new Runnable() {
+            @Override
+            public void run() {
+                for (OnTranslationCallback callback : callbackList) {
+                    callback.onTranslationFailed(GoogleWebTranslator.this, throwable);
+                }
+            }
+        });
     }
 
     private class MyWebViewClient extends WebViewClient {
@@ -184,10 +252,58 @@ public class GoogleWebTranslator {
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
 
-            _doJavascript(JS_INIT);
-            initialized = true;
-            long preparedSpentTime = System.currentTimeMillis() - prepareStartTime;
-            logger.info("Page initialized, spent: " + preparedSpentTime + " ms");
+            if (receivedErrorBeforeInitialized) {
+                postInitializationFailed();
+            } else {
+                _doJavascript(JS_INIT);
+                initialized = true;
+                long preparedSpentTime = System.currentTimeMillis() - prepareStartTime;
+                logger.info("Page initialized, spent: " + preparedSpentTime + " ms");
+
+                postInitialized();
+
+                if (textToTranslate != null) {
+                    translate(textToTranslate);
+                }
+            }
+        }
+
+        @Override
+        public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+            super.onReceivedError(view, errorCode, description, failingUrl);
+            if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                return;
+            }
+            logger.error("onReceivedError(), errorCode: " + errorCode + ", desc: " + description);
+
+            _onReceivedError(failingUrl);
+        }
+
+        @TargetApi(android.os.Build.VERSION_CODES.M)
+        @Override
+        public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+            super.onReceivedError(view, request, error);
+            logger.error("onReceivedError()");
+
+            _onReceivedError(request.getUrl().toString());
+        }
+
+        private void _onReceivedError(String url) {
+            if (!initialized && url.equalsIgnoreCase(currentTranslatorUrl)) {
+                receivedErrorBeforeInitialized = true;
+                initialized = false;
+                postInitializationFailed();
+            }
+        }
+
+        @Override
+        public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
+            super.onReceivedHttpError(view, request, errorResponse);
+        }
+
+        @Override
+        public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+            super.onReceivedSslError(view, handler, error);
         }
 
         // shouldInterceptRequest:
@@ -237,7 +353,7 @@ public class GoogleWebTranslator {
             if (!methodGet) {
                 logger.warn("POST not working now, spent: " + getTranslationSpentTime() + " ms");
 
-                postFailed(new IllegalArgumentException("Http POST is not supported now"));
+                postTranslationFailed(new IllegalArgumentException("Http POST is not supported now"));
 
                 return null;
             }
@@ -306,14 +422,14 @@ public class GoogleWebTranslator {
 //                });
 //            }
 
-            String raw = responseText[0];
-
-            TranslatedResult result = ResultParser.parse(responseText[0]);
-
             if (success[0]) {
-                logger.info("On result success, spent: " + getTranslationSpentTime() + " ms, result: " + responseText[0]);
+                String raw = responseText[0];
 
-                postResult(result);
+                TranslatedResult result = ResultParser.parse(responseText[0]);
+
+                logger.info("On result success, spent: " + getTranslationSpentTime() + " ms, result: " + raw);
+
+                postTranslationFinish(result);
 
                 try {
                     return new WebResourceResponse(
@@ -337,7 +453,7 @@ public class GoogleWebTranslator {
             } else {
                 logger.warn("Result failed: " + httpError[0].getMessage());
 
-                postFailed(httpError[0]);
+                postTranslationFailed(httpError[0]);
 
                 return null;
             }
@@ -348,28 +464,6 @@ public class GoogleWebTranslator {
             super.onLoadResource(view, url);
 
             logger.debug("onLoadResource: " + url);
-        }
-
-        private void postResult(final TranslatedResult result) {
-            webView.post(new Runnable() {
-                @Override
-                public void run() {
-                    for (OnTranslationCallback onTranslationCallback : callbackList) {
-                        onTranslationCallback.onTranslationSuccess(result);
-                    }
-                }
-            });
-        }
-
-        private void postFailed(final Throwable throwable) {
-            webView.post(new Runnable() {
-                @Override
-                public void run() {
-                    for (OnTranslationCallback onTranslationCallback : callbackList) {
-                        onTranslationCallback.onTranslationFailed(throwable);
-                    }
-                }
-            });
         }
     }
 
@@ -387,8 +481,12 @@ public class GoogleWebTranslator {
     }
 
     public interface OnTranslationCallback {
-        void onTranslationSuccess(TranslatedResult result);
+        void onInitialized(GoogleWebTranslator translator);
 
-        void onTranslationFailed(Throwable throwable);
+        void onInitializationFailed(GoogleWebTranslator translator);
+
+        void onTranslationSuccess(GoogleWebTranslator translator, TranslatedResult result);
+
+        void onTranslationFailed(GoogleWebTranslator translator, Throwable throwable);
     }
 }
