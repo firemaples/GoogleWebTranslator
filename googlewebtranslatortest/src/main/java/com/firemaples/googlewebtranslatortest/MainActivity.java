@@ -11,6 +11,7 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 
 import com.firemaples.googlewebtranslator.GoogleWebTranslator;
+import com.firemaples.googlewebtranslator.Language;
 import com.firemaples.googlewebtranslator.TranslatedResult;
 
 public class MainActivity extends AppCompatActivity {
@@ -60,7 +61,7 @@ public class MainActivity extends AppCompatActivity {
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT));
 
-        translator.setTargetLanguage("zh-TW");
+        translator.setTargetLanguage(Language.Chinese_Traditional);
     }
 
     @Override

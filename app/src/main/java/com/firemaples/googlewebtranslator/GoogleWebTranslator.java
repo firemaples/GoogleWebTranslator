@@ -149,6 +149,11 @@ public class GoogleWebTranslator {
         this.callbackList.remove(onTranslationCallback);
     }
 
+    public void setTargetLanguage(Language targetLanguage) {
+        setTargetLanguage(targetLanguage.getLangCode());
+    }
+
+    @SuppressWarnings("WeakerAccess")
     public void setTargetLanguage(String targetLanguage) {
         String url = URL_GOOGLE_TRANSLATE.replace(FORMAT_TARGET_LANG, targetLanguage);
 
