@@ -1,5 +1,6 @@
 package com.firemaples.googlewebtranslator;
 
+import android.annotation.SuppressLint;
 import android.annotation.TargetApi;
 import android.content.Context;
 import android.net.http.SslError;
@@ -34,31 +35,30 @@ import java.util.Map;
 
 import cz.msebera.android.httpclient.Header;
 
+@SuppressWarnings({"FieldCanBeLocal", "unused"})
 public class GoogleWebTranslator {
     private final static Logger logger = LoggerFactory.getLogger(GoogleWebTranslator.class);
 
-    //    private static String URL_GOOGLE_TRANSLATE = "https://translate.google.com/m/translate?sl=auto&tl={TL}&ie=UTF-8&q={TEXT}";
-    private final static String FORMAT_KEY = "{KEY}";
     private final static String FORMAT_TEXT = "{TEXT}";
-    private final static String FORMAT_SOURCE_LANG = "{SL}";
+    //    private final static String FORMAT_SOURCE_LANG = "{SL}";
     private final static String FORMAT_TARGET_LANG = "{TL}";
 
     private static String URL_GOOGLE_TRANSLATE = "https://translate.google.com/m/translate?sl=auto&tl={TL}&ie=UTF-8";
-    //    private static String URL_GOOGLE_TRANSLATE = "https://www.buddydo.com/t3/NjY4NjYy81e5null";
     private static String URL_LOAD_TRANSLATION_RESULT = "https://translate.google.com/translate_a/single?";
 
     private static String JS_FORMAT = "javascript:%s;void 0";
     private static String JS_INIT = "document.getElementsByClassName('translation')[0].addEventListener('DOMNodeInserted', function(e){window.HtmlViewer.onTranslationSuccess(e.target.textContent);})";
     private static String JS_TRANSLATE = "document.getElementById('source').value = '{TEXT}'";
-    private static String JS_TRANSLATION_FAILED_CHECK = "if(document.getElementsByClassName('translation-error')[0].style.display === ''){onTranslationFailed();}";
-    private static String JS_FORCE_POST_TRANSLATE = "var text='%s';for(var i=0;i<700;i++){text+=i};document.getElementById('source').value = text";
+//    private static String JS_TRANSLATION_FAILED_CHECK = "if(document.getElementsByClassName('translation-error')[0].style.display === ''){onTranslationFailed();}";
+//    private static String JS_FORCE_POST_TRANSLATE = "var text='%s';for(var i=0;i<700;i++){text+=i};document.getElementById('source').value = text";
 
-    private static String POST_FORM_Q = "q";
+//    private static String POST_FORM_Q = "q";
 
     private static String HTTP_GET = "GET";
     private static String UTF_8 = "UTF-8";
 
 
+    @SuppressLint("StaticFieldLeak")
     private static GoogleWebTranslator _instance = null;
 
     private WeakReference<Context> weakContext;
@@ -104,12 +104,7 @@ public class GoogleWebTranslator {
         }
     }
 
-    public WebView getWebView() {
-        return webView;
-    }
-
     public WebView getNonParentWebView() {
-        WebView webView = getWebView();
         ViewGroup viewGroup = (ViewGroup) webView.getParent();
         if (viewGroup != null) {
             viewGroup.removeView(webView);
@@ -118,6 +113,7 @@ public class GoogleWebTranslator {
         return webView;
     }
 
+    @SuppressLint({"ClickableViewAccessibility", "SetJavaScriptEnabled"})
     private void _init() {
         webView = new WebView(getContext());
         webView.addJavascriptInterface(new MyJavaScriptInterface(), "HtmlViewer");
@@ -140,6 +136,7 @@ public class GoogleWebTranslator {
         settings.setJavaScriptCanOpenWindowsAutomatically(false);
         settings.setLoadsImagesAutomatically(false);
         settings.setSaveFormData(false);
+        //noinspection deprecation
         settings.setSavePassword(false);
         settings.setSupportMultipleWindows(false);
     }
