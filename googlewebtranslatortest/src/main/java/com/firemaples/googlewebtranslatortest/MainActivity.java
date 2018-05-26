@@ -27,7 +27,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void onInitializationFailed(GoogleWebTranslator translator) {
+        public void onInitializationFailed(GoogleWebTranslator translator, int errorCode, String desc) {
             Log.e(TAG, "Translator initialization failed");
         }
 

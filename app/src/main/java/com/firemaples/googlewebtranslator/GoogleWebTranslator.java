@@ -5,7 +5,9 @@ import android.annotation.TargetApi;
 import android.content.Context;
 import android.net.http.SslError;
 import android.os.Build;
+import android.os.Looper;
 import android.support.annotation.Nullable;
+import android.support.annotation.VisibleForTesting;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -70,7 +72,8 @@ public class GoogleWebTranslator {
     private String textToTranslate = null;
     private long prepareStartTime = 0, translationStartTime = 0;
 
-    private List<OnTranslationCallback> callbackList = new ArrayList<>();
+    @VisibleForTesting
+    protected List<OnTranslationCallback> callbackList = new ArrayList<>();
 
     public static synchronized GoogleWebTranslator init(Context context) {
         if (_instance == null) {
@@ -149,6 +152,10 @@ public class GoogleWebTranslator {
         this.callbackList.remove(onTranslationCallback);
     }
 
+    public void clearAllCallbacks(){
+        this.callbackList.clear();
+    }
+
     public void setTargetLanguage(Language targetLanguage) {
         setTargetLanguage(targetLanguage.getLangCode());
     }
@@ -168,7 +175,21 @@ public class GoogleWebTranslator {
         prepareStartTime = System.currentTimeMillis();
         receivedErrorBeforeInitialized = false;
         initialized = false;
-        webView.loadUrl(currentTranslatorUrl);
+
+        runOnMainThread(new Runnable() {
+            @Override
+            public void run() {
+                webView.loadUrl(currentTranslatorUrl);
+            }
+        });
+    }
+
+    private void runOnMainThread(Runnable runnable) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            runnable.run();
+        } else {
+            webView.post(runnable);
+        }
     }
 
     public void translate(String text) {
@@ -188,11 +209,16 @@ public class GoogleWebTranslator {
     }
 
     private void _doJavascript(String javascript) {
-        String url = String.format(Locale.US, JS_FORMAT, javascript);
+        final String url = String.format(Locale.US, JS_FORMAT, javascript);
 
         logger.info("_doJavascript: " + url);
 
-        webView.loadUrl(url);
+        runOnMainThread(new Runnable() {
+            @Override
+            public void run() {
+                webView.loadUrl(url);
+            }
+        });
     }
 
     private void _postMainThread(Runnable runnable) {
@@ -210,12 +236,12 @@ public class GoogleWebTranslator {
         });
     }
 
-    private void postInitializationFailed() {
+    private void postInitializationFailed(final int errorCode, final String desc) {
         _postMainThread(new Runnable() {
             @Override
             public void run() {
                 for (OnTranslationCallback callback : callbackList) {
-                    callback.onInitializationFailed(GoogleWebTranslator.this);
+                    callback.onInitializationFailed(GoogleWebTranslator.this, errorCode, desc);
                 }
             }
         });
@@ -254,9 +280,7 @@ public class GoogleWebTranslator {
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
 
-            if (receivedErrorBeforeInitialized) {
-                postInitializationFailed();
-            } else {
+            if (!receivedErrorBeforeInitialized) {
                 _doJavascript(JS_INIT);
                 initialized = true;
                 long preparedSpentTime = System.currentTimeMillis() - prepareStartTime;
@@ -278,7 +302,7 @@ public class GoogleWebTranslator {
             }
             logger.error("onReceivedError(), errorCode: " + errorCode + ", desc: " + description);
 
-            _onReceivedError(failingUrl);
+            _onReceivedError(failingUrl, errorCode, description);
         }
 
         @TargetApi(android.os.Build.VERSION_CODES.M)
@@ -287,14 +311,14 @@ public class GoogleWebTranslator {
             super.onReceivedError(view, request, error);
             logger.error("onReceivedError()");
 
-            _onReceivedError(request.getUrl().toString());
+            _onReceivedError(request.getUrl().toString(), error.getErrorCode(), error.getDescription().toString());
         }
 
-        private void _onReceivedError(String url) {
+        private void _onReceivedError(String url, int errorCode, String desc) {
             if (!initialized && url.equalsIgnoreCase(currentTranslatorUrl)) {
                 receivedErrorBeforeInitialized = true;
                 initialized = false;
-                postInitializationFailed();
+                postInitializationFailed(errorCode, desc);
             }
         }
 
@@ -427,7 +451,7 @@ public class GoogleWebTranslator {
             if (success[0]) {
                 String raw = responseText[0];
 
-                TranslatedResult result = ResultParser.parse(responseText[0]);
+                TranslatedResult result = ResultParser.parse(raw);
 
                 logger.info("On result success, spent: " + getTranslationSpentTime() + " ms, result: " + raw);
 
@@ -485,7 +509,7 @@ public class GoogleWebTranslator {
     public interface OnTranslationCallback {
         void onInitialized(GoogleWebTranslator translator);
 
-        void onInitializationFailed(GoogleWebTranslator translator);
+        void onInitializationFailed(GoogleWebTranslator translator, int errorCode, String desc);
 
         void onTranslationSuccess(GoogleWebTranslator translator, TranslatedResult result);
 

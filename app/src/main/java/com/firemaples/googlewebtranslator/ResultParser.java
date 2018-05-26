@@ -22,6 +22,8 @@ public class ResultParser {
             JSONArray mainArray = new JSONArray(raw);
 
             StringBuilder translatedText = new StringBuilder();
+
+            parseLooper:
             for (int i = 0; i < mainArray.length(); i++) {
                 if (!(mainArray.get(i) instanceof JSONArray)) {
                     break;
@@ -29,7 +31,7 @@ public class ResultParser {
                 JSONArray arr = mainArray.getJSONArray(i);
                 for (int j = 0; j < arr.length(); j++) {
                     if (!(arr.get(j) instanceof JSONArray)) {
-                        break;
+                        break parseLooper;
                     }
                     JSONArray obj = arr.getJSONArray(j);
                     if (obj.length() > 0 && obj.get(0) instanceof String) {
@@ -38,7 +40,7 @@ public class ResultParser {
                         }
                         translatedText.append(obj.getString(0));
                     } else {
-                        break;
+                        break parseLooper;
                     }
                 }
             }
