@@ -98,6 +98,23 @@ public class GoogleWebTranslatorTest {
         translator.setTargetLanguage(Language.Chinese_Traditional);
     }
 
+//    @Test
+//    public void translateLargeText() {
+//        translator.addOnTranslationCallback(new InitCallback() {
+//            @Override
+//            public void onInitialized(GoogleWebTranslator translator) {
+//                translator.translate("But late on Friday, Mr Trump tweeted: \"We are having very productive talks with North Korea about reinstating the Summit which, if it does happen, will likely remain in Singapore on the same date, June 12th., and, if necessary, will be extended beyond that date.\"");
+//            }
+//
+//            @Override
+//            public void onTranslationSuccess(GoogleWebTranslator translator, TranslatedResult result) {
+//                translator.removeOnTranslationCallback(this);
+//                assertEquals("測試", result.text);
+//            }
+//        });
+//        translator.setTargetLanguage(Language.Chinese_Traditional);
+//    }
+
     private class InitCallback implements GoogleWebTranslator.OnTranslationCallback {
         @Override
         public void onInitialized(GoogleWebTranslator translator) {

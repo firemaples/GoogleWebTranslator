@@ -24,13 +24,5 @@ dependencies {
     androidTestImplementation 'com.android.support.test:runner:1.0.1'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.1'
 
-    //For logger
-    implementation 'com.github.tony19:logback-android-core:1.1.1-4'
-    implementation ('com.github.tony19:logback-android-classic:1.1.1-4'){
-        exclude group: 'xpp3', module: 'xpp3'
-        exclude group: 'com.google.android'
-    }
-    implementation 'org.slf4j:slf4j-api:1.7.6'
-
     implementation 'com.loopj.android:android-async-http:1.4.9'
 }

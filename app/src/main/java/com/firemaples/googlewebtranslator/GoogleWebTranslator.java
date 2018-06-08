@@ -23,9 +23,6 @@ import android.webkit.WebViewClient;
 import com.loopj.android.http.SyncHttpClient;
 import com.loopj.android.http.TextHttpResponseHandler;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.io.ByteArrayInputStream;
 import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
@@ -39,7 +36,7 @@ import cz.msebera.android.httpclient.Header;
 
 @SuppressWarnings({"FieldCanBeLocal", "unused"})
 public class GoogleWebTranslator {
-    private final static Logger logger = LoggerFactory.getLogger(GoogleWebTranslator.class);
+    private static final String TAG = GoogleWebTranslator.class.getSimpleName();
 
     private final static String FORMAT_TEXT = "{TEXT}";
     //    private final static String FORMAT_SOURCE_LANG = "{SL}";
@@ -152,7 +149,7 @@ public class GoogleWebTranslator {
         this.callbackList.remove(onTranslationCallback);
     }
 
-    public void clearAllCallbacks(){
+    public void clearAllCallbacks() {
         this.callbackList.clear();
     }
 
@@ -164,7 +161,7 @@ public class GoogleWebTranslator {
     public void setTargetLanguage(String targetLanguage) {
         String url = URL_GOOGLE_TRANSLATE.replace(FORMAT_TARGET_LANG, targetLanguage);
 
-        logger.info("setTargetLanguage: " + url);
+        LogTool.i(TAG, "setTargetLanguage: " + url);
 
         currentTranslatorUrl = url;
 
@@ -211,7 +208,7 @@ public class GoogleWebTranslator {
     private void _doJavascript(String javascript) {
         final String url = String.format(Locale.US, JS_FORMAT, javascript);
 
-        logger.info("_doJavascript: " + url);
+        LogTool.i(TAG, "_doJavascript: " + url);
 
         runOnMainThread(new Runnable() {
             @Override
@@ -284,7 +281,7 @@ public class GoogleWebTranslator {
                 _doJavascript(JS_INIT);
                 initialized = true;
                 long preparedSpentTime = System.currentTimeMillis() - prepareStartTime;
-                logger.info("Page initialized, spent: " + preparedSpentTime + " ms");
+                LogTool.i(TAG, "Page initialized, spent: " + preparedSpentTime + " ms");
 
                 postInitialized();
 
@@ -300,7 +297,7 @@ public class GoogleWebTranslator {
             if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 return;
             }
-            logger.error("onReceivedError(), errorCode: " + errorCode + ", desc: " + description);
+            LogTool.e(TAG, "onReceivedError(), errorCode: " + errorCode + ", desc: " + description);
 
             _onReceivedError(failingUrl, errorCode, description);
         }
@@ -309,7 +306,7 @@ public class GoogleWebTranslator {
         @Override
         public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
             super.onReceivedError(view, request, error);
-            logger.error("onReceivedError()");
+            LogTool.e(TAG, "onReceivedError()");
 
             _onReceivedError(request.getUrl().toString(), error.getErrorCode(), error.getDescription().toString());
         }
@@ -372,12 +369,12 @@ public class GoogleWebTranslator {
                 return null;
             }
 
-            logger.info("_interceptRequest(), url: " + url
+            LogTool.i(TAG, "_interceptRequest(), url: " + url
                     + ", methodGet: " + methodGet
                     + ", requestHeaders!=null: " + String.valueOf(requestHeaders != null));
 
             if (!methodGet) {
-                logger.warn("POST not working now, spent: " + getTranslationSpentTime() + " ms");
+                LogTool.e(TAG,"POST not working now, spent: " + getTranslationSpentTime() + " ms");
 
                 postTranslationFailed(new IllegalArgumentException("Http POST is not supported now"));
 
@@ -453,7 +450,7 @@ public class GoogleWebTranslator {
 
                 TranslatedResult result = ResultParser.parse(raw);
 
-                logger.info("On result success, spent: " + getTranslationSpentTime() + " ms, result: " + raw);
+                LogTool.i(TAG, "On result success, spent: " + getTranslationSpentTime() + " ms, result: " + raw);
 
                 postTranslationFinish(result);
 
@@ -477,7 +474,7 @@ public class GoogleWebTranslator {
                     return null;
                 }
             } else {
-                logger.warn("Result failed: " + httpError[0].getMessage());
+                LogTool.e(TAG,"Result failed: " + httpError[0].getMessage());
 
                 postTranslationFailed(httpError[0]);
 
@@ -489,7 +486,7 @@ public class GoogleWebTranslator {
         public void onLoadResource(WebView view, String url) {
             super.onLoadResource(view, url);
 
-            logger.debug("onLoadResource: " + url);
+            LogTool.d(TAG, "onLoadResource: " + url);
         }
     }
 
@@ -497,12 +494,12 @@ public class GoogleWebTranslator {
     private class MyJavaScriptInterface {
         @JavascriptInterface
         public void onTranslationSuccess(String text) {
-            logger.debug("onTranslationSuccess: " + text);
+            LogTool.d(TAG, "onTranslationSuccess: " + text);
         }
 
         @JavascriptInterface
         public void onTranslationFailed() {
-            logger.debug("onTranslationFailed");
+            LogTool.d(TAG, "onTranslationFailed");
         }
     }
 

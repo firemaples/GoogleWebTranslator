@@ -1,8 +1,5 @@
 package com.firemaples.googlewebtranslator;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.net.URISyntaxException;
 import java.util.Iterator;
 import java.util.List;
@@ -15,21 +12,21 @@ import cz.msebera.android.httpclient.client.utils.URIBuilder;
 import cz.msebera.android.httpclient.message.BasicHeader;
 
 public class HttpUtil {
-    private static final Logger logger = LoggerFactory.getLogger(HttpUtil.class);
+    private static final String TAG = HttpUtil.class.getSimpleName();
 
-    public static Header[] getHeaders(Map<String, String> requestHeaders){
+    public static Header[] getHeaders(Map<String, String> requestHeaders) {
         Header[] headersToSend = null;
         if (requestHeaders != null) {
-            logger.debug("====== Header Start ======");
+            LogTool.d(TAG, "====== Header Start ======");
             headersToSend = new Header[requestHeaders.size()];
             Set<String> keySet = requestHeaders.keySet();
             int i = 0;
             for (String key : keySet) {
                 String value = requestHeaders.get(key);
-                logger.debug(key + "=" + value);
+                LogTool.d(TAG, key + "=" + value);
                 headersToSend[i++] = new BasicHeader(key, value);
             }
-            logger.debug("====== Header End ======");
+            LogTool.d(TAG, "====== Header End ======");
         }
         return headersToSend;
     }
