@@ -10,6 +10,7 @@ import android.view.MenuItem;
 import android.view.ViewGroup;
 import android.widget.EditText;
 
+import com.firemaples.googlewebtranslator.GoogleTranslator;
 import com.firemaples.googlewebtranslator.GoogleWebTranslator;
 import com.firemaples.googlewebtranslator.Language;
 import com.firemaples.googlewebtranslator.TranslatedResult;
@@ -17,7 +18,9 @@ import com.firemaples.googlewebtranslator.TranslatedResult;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
 
-    private GoogleWebTranslator translator;
+//    private GoogleWebTranslator translator;
+
+    private GoogleTranslator googleTranslator;
 
     private GoogleWebTranslator.OnTranslationCallback onTranslationCallback = new GoogleWebTranslator.OnTranslationCallback() {
 
@@ -47,27 +50,30 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        translator = GoogleWebTranslator.init(this);
+//        translator = GoogleWebTranslator.init(this);
+        googleTranslator = new GoogleTranslator(this);
 
-        translator.addOnTranslationCallback(onTranslationCallback);
+//        translator.addOnTranslationCallback(onTranslationCallback);
 
         setViews();
     }
 
     private void setViews() {
         ViewGroup rootView = findViewById(R.id.view_root);
-        rootView.addView(translator.getNonParentWebView(),
-                new ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT));
+//        rootView.addView(translator.getNonParentWebView(),
+//                new ViewGroup.LayoutParams(
+//                        ViewGroup.LayoutParams.MATCH_PARENT,
+//                        ViewGroup.LayoutParams.MATCH_PARENT));
 
-        translator.setTargetLanguage(Language.Chinese_Traditional);
+        googleTranslator.setup(rootView);
+
+//        translator.setTargetLanguage(Language.Chinese_Traditional);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        translator.removeOnTranslationCallback(onTranslationCallback);
+//        translator.removeOnTranslationCallback(onTranslationCallback);
     }
 
     @Override
@@ -87,7 +93,8 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onClick(DialogInterface dialogInterface, int i) {
                     String text = et.getText().toString();
-                    translator.translate(text);
+//                    translator.translate(text);
+                    googleTranslator.translate(text, Language.Chinese_Traditional.getLangCode());
                 }
             });
             ab.setNegativeButton(android.R.string.cancel, null);
