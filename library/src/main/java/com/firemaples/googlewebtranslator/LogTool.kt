@@ -5,8 +5,8 @@ import android.util.Log
 class LogTool {
     companion object {
         @JvmStatic
-        fun d(tag: String, msg: String) {
-            if (!DEBUG) {
+        fun d(tag: String, msg: String, force: Boolean = false) {
+            if (!DEBUG && !force) {
                 return
             }
 
@@ -14,8 +14,8 @@ class LogTool {
         }
 
         @JvmStatic
-        fun i(tag: String, msg: String) {
-            if (!DEBUG) {
+        fun i(tag: String, msg: String, force: Boolean = false) {
+            if (!DEBUG && !force) {
                 return
             }
 
@@ -23,8 +23,8 @@ class LogTool {
         }
 
         @JvmStatic
-        fun w(tag: String, msg: String) {
-            if (!DEBUG) {
+        fun w(tag: String, msg: String, force: Boolean = false) {
+            if (!DEBUG && !force) {
                 return
             }
 
@@ -32,8 +32,8 @@ class LogTool {
         }
 
         @JvmStatic
-        fun e(tag: String, msg: String) {
-            if (!DEBUG) {
+        fun e(tag: String, msg: String, force: Boolean = false) {
+            if (!DEBUG && !force) {
                 return
             }
 

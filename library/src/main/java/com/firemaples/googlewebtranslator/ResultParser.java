@@ -10,7 +10,7 @@ import org.json.JSONException;
 public class ResultParser {
     public static TranslatedResult parse(String raw) {
         TranslatedResult result = new TranslatedResult();
-        result.raw = raw;
+        result.setRaw(raw);
         _parseResultText(result, raw);
         _parseFromLanguage(result, raw);
         _parseFromText(result, raw);
@@ -45,7 +45,7 @@ public class ResultParser {
                 }
             }
 
-            result.text = translatedText.toString();
+            result.setText(translatedText.toString());
         } catch (JSONException e) {
             e.printStackTrace();
         }
@@ -59,10 +59,10 @@ public class ResultParser {
                 if (mainArray.get(2) instanceof String
                         && mainArray.getJSONArray(8).getJSONArray(0).get(0) instanceof String) {
                     if (mainArray.getString(2).equals(mainArray.getJSONArray(8).getJSONArray(0).getString(0))) {
-                        result.fromLanguage_iso = mainArray.getString(2);
+                        result.setFromLanguage_iso(mainArray.getString(2));
                     } else {
-                        result.fromLanguage_didYouMean = true;
-                        result.fromLanguage_iso = mainArray.getJSONArray(8).getJSONArray(0).getString(0);
+                        result.setFromLanguage_didYouMean(true);
+                        result.setFromLanguage_iso(mainArray.getJSONArray(8).getJSONArray(0).getString(0));
                     }
                 }
             }
@@ -80,12 +80,12 @@ public class ResultParser {
                 str = str.replaceAll("<b><i>", "[");
                 str = str.replaceAll("</i></b>", "]");
 
-                result.fromText_value = str;
+                result.setFromText_value(str);
 
                 if (mainArray.getJSONArray(7).get(5) instanceof Boolean && mainArray.getJSONArray(7).getBoolean(5)) {
-                    result.fromText_autoCorrected = true;
+                    result.setFromText_autoCorrected(true);
                 } else {
-                    result.fromText_didYouMean = true;
+                    result.setFromText_didYouMean(true);
                 }
             }
         } catch (JSONException e) {

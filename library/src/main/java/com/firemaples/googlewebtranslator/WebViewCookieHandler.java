@@ -15,7 +15,7 @@ import okhttp3.HttpUrl;
  *
  * Reference: https://gist.github.com/Jthomas54/2f34b8aea5b457db5459e2421deffd15
  */
-public final class WebviewCookieHandler implements CookieJar {
+public final class WebViewCookieHandler implements CookieJar {
     private CookieManager webviewCookieManager = CookieManager.getInstance();
 
     @Override

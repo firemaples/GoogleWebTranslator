@@ -8,17 +8,15 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import com.facebook.stetho.Stetho
-import com.facebook.stetho.okhttp3.StethoInterceptor
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.ByteArrayInputStream
 
 @SuppressLint("SetJavaScriptEnabled")
-class GoogleTranslator(private val context: Context) {
+class GoogleWebTranslator(private val context: Context) {
     companion object {
-        internal val tag: String = GoogleTranslator::class.java.simpleName
+        internal val tag: String = GoogleWebTranslator::class.java.simpleName
         private var stethoInitialized = false
     }
 
@@ -44,9 +42,9 @@ class GoogleTranslator(private val context: Context) {
     }
 
     public fun setup(parentView: ViewGroup) {
-        if (DEBUG && !stethoInitialized) {
-            Stetho.initializeWithDefaults(context)
-        }
+//        if (DEBUG && !stethoInitialized) {
+//            Stetho.initializeWithDefaults(context)
+//        }
         threadUI.launch {
             webView.parent?.also { (it as ViewGroup).removeView(webView) }
             parentView.addView(webView,
@@ -57,13 +55,13 @@ class GoogleTranslator(private val context: Context) {
     public fun translate(_text: String, targetLang: String, callback: OnTranslationCallback) {
         threadUI.launch {
             if (webView.parent == null) {
-                LogTool.e(tag, "Please call setup() before translation")
+                LogTool.e(tag, "Please call setup() before translation", true)
                 return@launch
             }
 
             val text = _text.let {
                 if (it.length > maxTextSize) {
-                    LogTool.w(tag, "The maximum request text is limited to $maxTextSize, current is ${it.length}")
+                    LogTool.w(tag, "The maximum request text is limited to $maxTextSize, current is ${it.length}", true)
                     it.substring(0, maxTextSize)
                 } else it
             }
@@ -94,10 +92,10 @@ class GoogleTranslator(private val context: Context) {
 
         private val okHttpClient by lazy {
             OkHttpClient.Builder().apply {
-                cookieJar(WebviewCookieHandler())
-                if (DEBUG) {
-                    addNetworkInterceptor(StethoInterceptor())
-                }
+                cookieJar(WebViewCookieHandler())
+//                if (DEBUG) {
+//                    addNetworkInterceptor(StethoInterceptor())
+//                }
             }.build()
         }
 

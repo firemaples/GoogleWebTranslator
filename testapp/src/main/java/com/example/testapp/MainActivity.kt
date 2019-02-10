@@ -5,14 +5,14 @@ import android.support.v7.app.AppCompatActivity
 import android.util.Log
 import android.webkit.WebView
 import android.widget.ArrayAdapter
-import com.firemaples.googlewebtranslator.GoogleTranslator
+import com.firemaples.googlewebtranslator.GoogleWebTranslator
 import com.firemaples.googlewebtranslator.Language
 import com.firemaples.googlewebtranslator.TranslatedResult
 import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
     private val tag = MainActivity::class.java.simpleName
-    private val translator by lazy { GoogleTranslator(this) }
+    private val translator by lazy { GoogleWebTranslator(this) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,7 +31,7 @@ class MainActivity : AppCompatActivity() {
             if (!text.isNullOrBlank()) {
                 translator.translate(_text = text.toString(),
                         targetLang = Language.values()[sp_lang.selectedItemPosition].langCode,
-                        callback = object : GoogleTranslator.OnTranslationCallback {
+                        callback = object : GoogleWebTranslator.OnTranslationCallback {
                             override fun onStart() {
                                 Log.d(tag, "onStart()")
                             }
