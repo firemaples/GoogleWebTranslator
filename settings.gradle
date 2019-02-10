@@ -1,1 +1,1 @@
-include ':app', ':googlewebtranslatortest'
+include ':library', ':googlewebtranslatortest', ':testapp'
