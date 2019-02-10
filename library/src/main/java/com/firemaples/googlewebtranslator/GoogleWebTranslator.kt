@@ -2,12 +2,12 @@ package com.firemaples.googlewebtranslator
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Build
+import android.support.annotation.RequiresApi
 import android.util.Log
 import android.view.ViewGroup
-import android.webkit.WebResourceRequest
-import android.webkit.WebResourceResponse
-import android.webkit.WebView
-import android.webkit.WebViewClient
+import android.webkit.*
+import kotlinx.coroutines.Job
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -71,6 +71,7 @@ class GoogleWebTranslator(private val context: Context) {
             webView.setTag(R.id.text, text)
 
             LogTool.i(tag, "load url: $url")
+            webView.setTag(R.id.url, url)
             webView.setTag(R.id.startTime, System.currentTimeMillis())
             webView.setTag(R.id.callback, callback)
 
@@ -139,6 +140,27 @@ class GoogleWebTranslator(private val context: Context) {
             }
         }
 
+        override fun onReceivedError(view: WebView, errorCode: Int, description: String?, failingUrl: String?) {
+            super.onReceivedError(view, errorCode, description, failingUrl)
+            handleError(view, errorCode, description, failingUrl)
+        }
+
+        @RequiresApi(Build.VERSION_CODES.M)
+        override fun onReceivedError(view: WebView, request: WebResourceRequest?, error: WebResourceError?) {
+            super.onReceivedError(view, request, error)
+            handleError(view, error?.errorCode, error?.description?.toString(), request?.url.toString())
+        }
+
+        private fun handleError(view: WebView, errorCode: Int?, description: String?, failingUrl: String?) {
+            LogTool.e(tag, "handleError(), url: $failingUrl, error: ($errorCode)$description")
+            val originUrl = view.getTag(R.id.url) as String?
+            if (originUrl != null && failingUrl == originUrl) {
+                view.postCallback {
+                    it.onTranslationFailed("($errorCode) $description")
+                }
+            }
+        }
+
         private fun loadJS(view: WebView, js: String) {
             view.postDelayed({
                 val fullJS = "javascript:$js;void 0"
@@ -188,7 +210,6 @@ class GoogleWebTranslator(private val context: Context) {
 
             LogTool.i(tag, "intercept: $request")
 
-            val callback = view.getTag(R.id.callback) as OnTranslationCallback
             var errorMsg: String? = null
 
             try {
@@ -209,8 +230,8 @@ class GoogleWebTranslator(private val context: Context) {
                         LogTool.i(tag, body)
                         val result = ResultParser.parse(body)
                         LogTool.i(tag, "result($timeSpent): ${result.text}")
-                        threadUI.launch {
-                            callback.onTranslated(result)
+                        view.postCallback {
+                            it.onTranslated(result)
                         }
                         return WebResourceResponse(null, utf8,
                                 status, "OK",
@@ -239,8 +260,8 @@ class GoogleWebTranslator(private val context: Context) {
                 errorMsg = t.localizedMessage
             }
 
-            threadUI.launch {
-                callback.onTranslationFailed(errorMsg ?: "Unexpected result")
+            view.postCallback {
+                it.onTranslationFailed(errorMsg ?: "Unexpected result")
             }
 
             return null
@@ -251,5 +272,14 @@ class GoogleWebTranslator(private val context: Context) {
         fun onStart()
         fun onTranslated(result: TranslatedResult)
         fun onTranslationFailed(errorMsg: String)
+    }
+}
+
+private fun WebView.postCallback(block: (GoogleWebTranslator.OnTranslationCallback) -> Unit): Job = threadUI.launch {
+    this@postCallback.getTag(R.id.callback)?.also {
+        val callback = it as GoogleWebTranslator.OnTranslationCallback
+        this@postCallback.setTag(R.id.callback, null)
+
+        block(callback)
     }
 }

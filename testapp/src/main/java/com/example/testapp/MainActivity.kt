@@ -18,6 +18,8 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        com.firemaples.googlewebtranslator.DEBUG = true
+
         WebView.setWebContentsDebuggingEnabled(true)
 
         sp_lang.adapter = ArrayAdapter(this,
@@ -43,7 +45,7 @@ class MainActivity : AppCompatActivity() {
                             }
 
                             override fun onTranslationFailed(errorMsg: String) {
-                                Log.d(tag, "onTranslationFailed: $errorMsg")
+                                Log.e(tag, "onTranslationFailed: $errorMsg")
 
                                 tv_result.text = errorMsg
                             }

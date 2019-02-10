@@ -1,3 +1,3 @@
 package com.firemaples.googlewebtranslator
 
-public const val DEBUG = true
+public var DEBUG = false

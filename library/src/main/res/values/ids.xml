@@ -2,6 +2,7 @@
 <resources>
     <item name="text" type="id" />
     <item name="textPost" type="id" />
+    <item name="url" type="id" />
     <item name="startTime" type="id" />
     <item name="callback" type="id" />
 </resources>
