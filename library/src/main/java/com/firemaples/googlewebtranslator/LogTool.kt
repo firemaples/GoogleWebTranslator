@@ -6,7 +6,7 @@ class LogTool {
     companion object {
         @JvmStatic
         fun d(tag: String, msg: String, force: Boolean = false) {
-            if (!DEBUG && !force) {
+            if (!Tools.DEBUG && !force) {
                 return
             }
 
@@ -15,7 +15,7 @@ class LogTool {
 
         @JvmStatic
         fun i(tag: String, msg: String, force: Boolean = false) {
-            if (!DEBUG && !force) {
+            if (!Tools.DEBUG && !force) {
                 return
             }
 
@@ -24,7 +24,7 @@ class LogTool {
 
         @JvmStatic
         fun w(tag: String, msg: String, force: Boolean = false) {
-            if (!DEBUG && !force) {
+            if (!Tools.DEBUG && !force) {
                 return
             }
 
@@ -33,7 +33,7 @@ class LogTool {
 
         @JvmStatic
         fun e(tag: String, msg: String, force: Boolean = false) {
-            if (!DEBUG && !force) {
+            if (!Tools.DEBUG && !force) {
                 return
             }
 

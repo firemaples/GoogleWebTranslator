@@ -1,3 +1,8 @@
 package com.firemaples.googlewebtranslator
 
-public var DEBUG = false
+public class Tools{
+    companion object {
+        @JvmStatic
+        public var DEBUG = false
+    }
+}

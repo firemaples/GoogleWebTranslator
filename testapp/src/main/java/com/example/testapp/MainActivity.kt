@@ -7,6 +7,7 @@ import android.webkit.WebView
 import android.widget.ArrayAdapter
 import com.firemaples.googlewebtranslator.GoogleWebTranslator
 import com.firemaples.googlewebtranslator.Language
+import com.firemaples.googlewebtranslator.Tools
 import com.firemaples.googlewebtranslator.TranslatedResult
 import kotlinx.android.synthetic.main.activity_main.*
 
@@ -18,7 +19,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        com.firemaples.googlewebtranslator.DEBUG = true
+        Tools.DEBUG = true
 
         WebView.setWebContentsDebuggingEnabled(true)
 
