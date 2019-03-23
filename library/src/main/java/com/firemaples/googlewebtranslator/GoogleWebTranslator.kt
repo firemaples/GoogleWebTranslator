@@ -67,7 +67,7 @@ class GoogleWebTranslator(private val context: Context) {
             }
 
             LogTool.d(tag, "Text to request[${text.length}]: $text")
-            val url = "https://translate.google.com/m/translate?sl=auto&tl=$targetLang&ie=UTF-8"
+            val url = "https://translate.google.com/?sl=auto&tl=$targetLang&ie=UTF-8"
             webView.setTag(R.id.text, text)
 
             LogTool.i(tag, "load url: $url")
