@@ -23,11 +23,13 @@ class GoogleWebTranslator(private val context: Context) {
     private val maxTextSize = 5000
 
     private val webView: WebView by lazy {
-        WebView(context).apply {
-            webViewClient = MyWebViewClient()
+        WebView(context).also {
+            it.webViewClient = MyWebViewClient(context)
 //            setLayerType(View.LAYER_TYPE_HARDWARE, null)
 
-            settings.apply {
+            it.addJavascriptInterface(MyJSInterface(it), "MyJS")
+
+            it.settings.apply {
                 javaScriptEnabled = true
 //                builtInZoomControls = false
                 blockNetworkImage = true
@@ -67,7 +69,7 @@ class GoogleWebTranslator(private val context: Context) {
             }
 
             LogTool.d(tag, "Text to request[${text.length}]: $text")
-            val url = "https://translate.google.com/?sl=auto&tl=$targetLang&ie=UTF-8"
+            val url = "https://translate.google.com/?sl=auto&tl=$targetLang&ie=UTF-8&op=translate"
             webView.setTag(R.id.text, text)
 
             LogTool.i(tag, "load url: $url")
@@ -83,13 +85,18 @@ class GoogleWebTranslator(private val context: Context) {
         }
     }
 
-    private class MyWebViewClient : WebViewClient() {
+    private class MyWebViewClient(val context: Context) : WebViewClient() {
         private val httpGet = "GET"
         private val utf8 = "UTF-8"
         private val urlLoadTranslationResult = "https://translate.google.com/translate_a/single?"
         private val tempABCD = "tempABCD"
 
         private val htmlTitleParser by lazy { Regex("<title>([\\s\\S]*?)<\\/title>") }
+
+
+        val interceptorJS: String by lazy {
+            context.assets.open("intercept-network-requests.js").bufferedReader().use { it.readText() }
+        }
 
         private val okHttpClient by lazy {
             OkHttpClient.Builder().apply {
@@ -119,7 +126,8 @@ class GoogleWebTranslator(private val context: Context) {
                     loadJS(view, js)
                 }
 
-                loadJS(view, "document.getElementById('source').value=$tempABCD")
+                val sourceTextArea = "document.getElementsByTagName('textarea')[0]"
+                loadJS(view, "$sourceTextArea.value=$tempABCD")
                 loadJS(view, "function eventFire(el, etype){\n" +
                         "  if (el.fireEvent) {\n" +
                         "    el.fireEvent('on' + etype);\n" +
@@ -129,12 +137,17 @@ class GoogleWebTranslator(private val context: Context) {
                         "    el.dispatchEvent(evObj);\n" +
                         "  }\n" +
                         "}")
-                loadJSAsync(view, "document.getElementById('source').value") {
+                loadJS(view, interceptorJS)
+                loadJS(view, "$sourceTextArea.dispatchEvent(new Event('input', { bubbles: true}))")
+
+                loadJSAsync(view, "$sourceTextArea.value") {
                     val requestText = it.substring(1, it.length - 1)
                     LogTool.i(tag, "Got 'source' value[${requestText.length}]: $requestText")
                     if (!it.isBlank()) {
                         view.setTag(R.id.textPost, requestText)
-                        loadJS(view, "eventFire(document.getElementsByClassName('go-button')[0],'mousedown')")
+//                        val translateButton = "document.querySelectorAll(\"[aria-label='Translate']\")[0]"
+//                        loadJS(view, "eventFire($translateButton,'mousedown')")
+                        loadJS(view, "$sourceTextArea.dispatchEvent(new Event('input', { bubbles: true}))")
                     }
                 }
             }
@@ -179,92 +192,104 @@ class GoogleWebTranslator(private val context: Context) {
             }, 0)
         }
 
-        override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-            LogTool.d(tag, "shouldInterceptRequest: ${request.url}")
-            if (request.url.toString().startsWith(urlLoadTranslationResult, true)) {
-                val response = doInterceptRequest(view, request)
-                if (response != null) {
-                    return response
-                }
-            }
-            return super.shouldInterceptRequest(view, request)
-        }
-
-        private fun doInterceptRequest(view: WebView, originReq: WebResourceRequest): WebResourceResponse? {
-            LogTool.i(tag, "doInterceptRequest: ${originReq.method} ${originReq.url}")
-
-            val request = Request.Builder().apply {
-                url(originReq.url.toString())
-                when {
-                    httpGet.equals(originReq.method, true) ->
-                        method(httpGet, null)
-                    else ->
-                        method(originReq.method,
-                                FormBody.Builder().add("q",
-                                        view.getTag(R.id.textPost).toString()).build())
-                }
-                originReq.requestHeaders.forEach {
-                    header(it.key, it.value)
-                }
-            }.build()
-
-            LogTool.i(tag, "intercept: $request")
-
-            var errorMsg: String? = null
-
-            try {
-                val response = okHttpClient.newCall(request).execute()
-                val headers = response.headers().toMultimap()
-                        .map { it.key to it.value.firstOrNull() }.toMap()
-                val status = response.code()
-                val body = response.body()?.string()
-                val inputStream = body?.let {
-                    ByteArrayInputStream(it.toByteArray())
-                }
-                val timeSpent = (view.getTag(R.id.startTime) as Long?)?.let {
-                    "${System.currentTimeMillis() - it}ms"
-                }
-
-                if (response.isSuccessful) {
-                    if (body != null) {
-                        LogTool.i(tag, body)
-                        val result = ResultParser.parse(body)
-                        LogTool.i(tag, "result($timeSpent): ${result.text}")
-                        view.postCallback {
-                            it.onTranslated(result)
-                        }
-                        return WebResourceResponse(null, utf8,
-                                status, "OK",
-                                headers,
-                                inputStream)
-                    } else {
-                        LogTool.w(tag, "Response body is null($timeSpent)")
+//        override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+//            LogTool.d(tag, "shouldInterceptRequest: ${request.url}")
+//            if (request.url.toString().startsWith(urlLoadTranslationResult, true)) {
+//                val response = doInterceptRequest(view, request)
+//                if (response != null) {
+//                    return response
+//                }
+//            }
+//            return super.shouldInterceptRequest(view, request)
+//        }
+//
+//        private fun doInterceptRequest(view: WebView, originReq: WebResourceRequest): WebResourceResponse? {
+//            LogTool.i(tag, "doInterceptRequest: ${originReq.method} ${originReq.url}")
+//
+//            val request = Request.Builder().apply {
+//                url(originReq.url.toString())
+//                when {
+//                    httpGet.equals(originReq.method, true) ->
+//                        method(httpGet, null)
+//                    else ->
+//                        method(originReq.method,
+//                                FormBody.Builder().add("q",
+//                                        view.getTag(R.id.textPost).toString()).build())
+//                }
+//                originReq.requestHeaders.forEach {
+//                    header(it.key, it.value)
+//                }
+//            }.build()
+//
+//            LogTool.i(tag, "intercept: $request")
+//
+//            var errorMsg: String? = null
+//
+//            try {
+//                val response = okHttpClient.newCall(request).execute()
+//                val headers = response.headers().toMultimap()
+//                        .map { it.key to it.value.firstOrNull() }.toMap()
+//                val status = response.code()
+//                val body = response.body()?.string()
+//                val inputStream = body?.let {
+//                    ByteArrayInputStream(it.toByteArray())
+//                }
+//                val timeSpent = (view.getTag(R.id.startTime) as Long?)?.let {
+//                    "${System.currentTimeMillis() - it}ms"
+//                }
+//
+//                if (response.isSuccessful) {
+//                    if (body != null) {
+//                        LogTool.i(tag, body)
+//                        val result = ResultParser.parse(body)
+//                        LogTool.i(tag, "result($timeSpent): ${result.text}")
+//                        view.postCallback {
+//                            it.onTranslated(result)
+//                        }
 //                        return WebResourceResponse(null, utf8,
 //                                status, "OK",
 //                                headers,
 //                                inputStream)
-                    }
-                } else {
-                    errorMsg = if (body != null) {
-                        htmlTitleParser.find(body)?.groupValues?.let {
-                            if (it.size >= 2) {
-                                it[1]
-                            } else null
-                        }
-                    } else null
-                    LogTool.w(tag, "Response failed($timeSpent): $status, $errorMsg, $body")
-//                    return WebResourceResponse(null, utf8, status, "OK", headers, inputStream)
-                }
-            } catch (t: Throwable) {
-                LogTool.e(tag, "Error shown: ${Log.getStackTraceString(t)}")
-                errorMsg = t.localizedMessage
-            }
+//                    } else {
+//                        LogTool.w(tag, "Response body is null($timeSpent)")
+////                        return WebResourceResponse(null, utf8,
+////                                status, "OK",
+////                                headers,
+////                                inputStream)
+//                    }
+//                } else {
+//                    errorMsg = if (body != null) {
+//                        htmlTitleParser.find(body)?.groupValues?.let {
+//                            if (it.size >= 2) {
+//                                it[1]
+//                            } else null
+//                        }
+//                    } else null
+//                    LogTool.w(tag, "Response failed($timeSpent): $status, $errorMsg, $body")
+////                    return WebResourceResponse(null, utf8, status, "OK", headers, inputStream)
+//                }
+//            } catch (t: Throwable) {
+//                LogTool.e(tag, "Error shown: ${Log.getStackTraceString(t)}")
+//                errorMsg = t.localizedMessage
+//            }
+//
+//            view.postCallback {
+//                it.onTranslationFailed(errorMsg ?: "Unexpected result")
+//            }
+//
+//            return null
+//        }
+    }
 
-            view.postCallback {
-                it.onTranslationFailed(errorMsg ?: "Unexpected result")
-            }
+    @Suppress("unused")
+    private class MyJSInterface(val webView: WebView) {
+        @JavascriptInterface
+        fun onTranslatedResult(text: String) {
+            LogTool.d(tag, "On translated, $text")
 
-            return null
+            webView.postCallback {
+                it.onTranslated(TranslatedResult().apply { this.text = text })
+            }
         }
     }
 
