@@ -21,6 +21,14 @@ android {
     lintOptions {
         abortOnError false
     }
+
+    libraryVariants.all { variant ->
+        variant.outputs.all { output ->
+            if (outputFile != null && outputFileName.endsWith('.aar')) {
+                outputFileName = "google-web-translator-${defaultConfig.versionName}.aar"
+            }
+        }
+    }
 }
 
 dependencies {
