@@ -15,6 +15,9 @@ import com.firemaples.googlewebtranslator.TranslatedResult
 class MainActivity : AppCompatActivity() {
     private val tag = MainActivity::class.java.simpleName
     private val translator by lazy { GoogleWebTranslator(this) }
+    private val translatorNew by lazy {
+        com.firemaples.googlewebtranslator.translator.GoogleWebTranslator(this)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -34,30 +37,35 @@ class MainActivity : AppCompatActivity() {
             android.R.layout.simple_spinner_dropdown_item, Language.values()
                 .map { it.name })
 //
-        translator.setup(wrapWebView)
+//        translator.setup(wrapWebView)
+        translatorNew.setup(wrapWebView)
 
         btSubmit.setOnClickListener {
             val text = etText.text
             if (!text.isNullOrBlank()) {
-                translator.translate(_text = text.toString(),
-                    targetLang = Language.values()[spLang.selectedItemPosition].langCode,
-                    callback = object : GoogleWebTranslator.OnTranslationCallback {
-                        override fun onStart() {
-                            Log.d(tag, "onStart()")
-                        }
-
-                        override fun onTranslated(result: TranslatedResult) {
-                            Log.d(tag, "onTranslated(): ${result.text}")
-
-                            tvResult.text = result.text
-                        }
-
-                        override fun onTranslationFailed(errorMsg: String) {
-                            Log.e(tag, "onTranslationFailed: $errorMsg")
-
-                            tvResult.text = errorMsg
-                        }
-                    })
+                translatorNew.translate(
+                    text = text.toString(),
+                    targetLang = Language.values()[spLang.selectedItemPosition].langCode
+                )
+//                translator.translate(_text = text.toString(),
+//                    targetLang = Language.values()[spLang.selectedItemPosition].langCode,
+//                    callback = object : GoogleWebTranslator.OnTranslationCallback {
+//                        override fun onStart() {
+//                            Log.d(tag, "onStart()")
+//                        }
+//
+//                        override fun onTranslated(result: TranslatedResult) {
+//                            Log.d(tag, "onTranslated(): ${result.text}")
+//
+//                            tvResult.text = result.text
+//                        }
+//
+//                        override fun onTranslationFailed(errorMsg: String) {
+//                            Log.e(tag, "onTranslationFailed: $errorMsg")
+//
+//                            tvResult.text = errorMsg
+//                        }
+//                    })
             }
         }
     }
