@@ -3,10 +3,10 @@ package com.firemaples.googlewebtranslator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
-import android.support.annotation.RequiresApi
 import android.util.Log
 import android.view.ViewGroup
 import android.webkit.*
+import androidx.annotation.RequiresApi
 import kotlinx.coroutines.Job
 import okhttp3.FormBody
 import okhttp3.OkHttpClient
