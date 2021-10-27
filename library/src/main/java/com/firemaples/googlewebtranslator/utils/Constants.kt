@@ -6,6 +6,7 @@ internal object Constants {
 
     const val JS_SELECTOR_SOURCE_TEXT = "document.querySelector('textarea[jsname=\"BJE2fc\"]')"
     const val JS_SELECTOR_TRANSLATE_BUTTON = "document.querySelector('div[jsname=\"vSSGHe\"]')"
+    const val JS_SELECTOR_TRANSLATED_TEXT = "document.querySelector('span[jsname=\"W297wb\"]')"
     const val JS_FUNCTION_EVENT_FIRE = "function eventFire(el, etype){\n" +
             "  if (el.fireEvent) {\n" +
             "    el.fireEvent('on' + etype);\n" +

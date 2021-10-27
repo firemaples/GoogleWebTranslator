@@ -10,6 +10,9 @@ import androidx.annotation.MainThread
 import androidx.annotation.RequiresApi
 import com.firemaples.googlewebtranslator.utils.Constants
 import com.firemaples.googlewebtranslator.utils.Logger
+import kotlinx.coroutines.*
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 @SuppressLint("SetJavaScriptEnabled")
 internal class GTWebView @JvmOverloads constructor(
@@ -18,9 +21,11 @@ internal class GTWebView @JvmOverloads constructor(
 
     private val logger: Logger by lazy { Logger(this::class) }
 
+    var onResult: ((text: String?, error: String?) -> Unit)? = null
+
     private val client: GTWebViewClient by lazy {
         GTWebViewClient { result, error ->
-
+            onResult?.invoke(result, error)
         }
     }
     private val chromeClient: GTWebChromeClient by lazy {
@@ -90,7 +95,7 @@ internal class GTWebView @JvmOverloads constructor(
     }
 
     private class GTWebViewClient(
-        private val onResult: (TranslationResult?, error: String?) -> Unit
+        private val onResult: (text: String?, error: String?) -> Unit
     ) :
         WebViewClient() {
         private val logger: Logger by lazy { Logger(this::class) }
@@ -135,31 +140,57 @@ internal class GTWebView @JvmOverloads constructor(
             super.onPageFinished(view, url)
             logger.debug("onPageFinished, url: $url")
 
-            val text = text
-            if (text.isBlank()) return
+            translate(view, text)
+        }
 
-            text.chunked(Constants.TEXT_CHUNK_SIZE).forEachIndexed { index, s ->
-                val js =
-                    if (index == 0) "$variableTempText=\"$s\""
-                    else "$variableTempText+=\"$s\""
+        private fun translate(view: WebView, text: String) =
+            CoroutineScope(Dispatchers.Main).launch {
+                if (text.isBlank()) return@launch
 
-                view.executeJS(js)
-            }
+                text.chunked(Constants.TEXT_CHUNK_SIZE).forEachIndexed { index, s ->
+                    val js =
+                        if (index == 0) "$variableTempText=\"$s\""
+                        else "$variableTempText+=\"$s\""
 
-            view.executeJS("${Constants.JS_SELECTOR_SOURCE_TEXT}.value=$variableTempText")
-            view.executeJS(Constants.JS_FUNCTION_EVENT_FIRE)
+                    view.executeJS(js)
+                }
 
-            view.executeJS("${Constants.JS_SELECTOR_SOURCE_TEXT}.value") {
-                val requestText = it.substring(1, it.length - 1)
+                view.executeJS("${Constants.JS_SELECTOR_SOURCE_TEXT}.value=$variableTempText")
+                view.executeJS(Constants.JS_FUNCTION_EVENT_FIRE)
+
+                val value =
+                    view.evaluateJS("${Constants.JS_SELECTOR_SOURCE_TEXT}.value")
+
+                val requestText = value.substring(1, value.length - 1)
                 logger.debug("Got source value(${requestText.length})=$requestText")
 
-                if (it.isNotBlank()) {
+                if (value.isNotBlank()) {
                     view.executeJS(
                         Constants.getEventFireJS(
                             Constants.JS_SELECTOR_TRANSLATE_BUTTON, Constants.JS_EVENT_MOUSE_DOWN
                         )
                     )
+
+                    val result = waitForResult(view)
+                    if (result.isNullOrBlank()) {
+                        onResult.invoke(null, "timeout")
+                    } else {
+                        onResult.invoke(result, null)
+                    }
                 }
+            }
+
+        private suspend fun waitForResult(view: WebView): String? {
+            return withTimeout(5000L) {
+                while (true) {
+                    val value = view.evaluateJS("${Constants.JS_SELECTOR_TRANSLATED_TEXT}.value")
+
+                    if (value.isNotBlank() && value != "null") {
+                        return@withTimeout value
+                    }
+                }
+
+                null
             }
         }
 
@@ -171,15 +202,24 @@ internal class GTWebView @JvmOverloads constructor(
             return super.shouldInterceptRequest(view, request)
         }
 
-        private fun WebView.executeJS(js: String, callback: ((String) -> Unit)? = null) {
-            postDelayed({
-                val jsToLoad = Constants.getExecutableJS(js, callback != null)
+        private suspend fun WebView.executeJS(js: String) {
+            return withContext(Dispatchers.Main) {
+                val jsToLoad = Constants.getExecutableJS(js, false)
                 logger.debug("loadJS(): $jsToLoad")
 
-                if (callback != null)
-                    evaluateJavascript(jsToLoad) { callback.invoke(it) }
-                else loadUrl(jsToLoad)
-            }, 0)
+                loadUrl(jsToLoad)
+            }
+        }
+
+        private suspend fun WebView.evaluateJS(js: String): String {
+            return withContext(Dispatchers.Main) {
+                val jsToLoad = Constants.getExecutableJS(js, true)
+                logger.debug("evaluateJS(): $jsToLoad")
+
+                suspendCoroutine { c ->
+                    evaluateJavascript(jsToLoad) { c.resume(it) }
+                }
+            }
         }
     }
 
@@ -194,7 +234,7 @@ internal class GTWebView @JvmOverloads constructor(
 
     interface GTWebViewCallback {
         fun onTranslationStarted()
-        fun onTranslated()
+        fun onTranslated(result: String)
         fun onTranslationFailed(error: String)
     }
 

@@ -16,8 +16,14 @@ class MainActivity : AppCompatActivity() {
     private val tag = MainActivity::class.java.simpleName
     private val translator by lazy { GoogleWebTranslator(this) }
     private val translatorNew by lazy {
-        com.firemaples.googlewebtranslator.translator.GoogleWebTranslator(this)
+        com.firemaples.googlewebtranslator.translator.GoogleWebTranslator(this).apply {
+            onResult = { text, error ->
+                tvResult.text = text ?: error
+            }
+        }
     }
+
+    lateinit var tvResult: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,7 +37,7 @@ class MainActivity : AppCompatActivity() {
         val btSubmit = findViewById<Button>(R.id.bt_submit)
         val wrapWebView = findViewById<ViewGroup>(R.id.wrap_webView)
         val etText = findViewById<EditText>(R.id.et_text)
-        val tvResult = findViewById<TextView>(R.id.tv_result)
+        tvResult = findViewById(R.id.tv_result)
 
         spLang.adapter = ArrayAdapter(this,
             android.R.layout.simple_spinner_dropdown_item, Language.values()
